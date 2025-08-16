@@ -1,68 +1,123 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:reddit_clone/core/error_text.dart';
+import 'package:reddit_clone/core/loader.dart';
+import 'package:reddit_clone/features/auth/controller/auth_controller.dart';
+import 'package:reddit_clone/features/community/controller/community_controller.dart';
+import 'package:routemaster/routemaster.dart';
 
-class CommunityScreen extends ConsumerStatefulWidget {
-  const CommunityScreen({super.key});
+class CommunityScreen extends ConsumerWidget {
+  final String name;
+  const CommunityScreen({
+    super.key,
+    required this.name,
+  });
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _CommunityScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(userModelProvider);
 
-class _CommunityScreenState extends ConsumerState<CommunityScreen> {
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Create a community"),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.topLeft,
-              child: const Text("Community name"),
-            ),
-
-            const SizedBox(height: 10,),
-
-            Align(
-              alignment: kIsWeb ? Alignment.topLeft:Alignment.topCenter,
-              child: SizedBox(
-                width: kIsWeb ? 400: double.infinity,
-                child: TextField(
-                  // controller: ,
-                  decoration: InputDecoration(
-                    hintText: "r/community-name",
-                    filled: true,
-                    border: InputBorder.none,
-                  ),
-                  maxLength: 21,
+      body: ref.watch(getCommunityByNameProvider(name)).when(
+        data: (community) => NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverAppBar(
+                leading: IconButton(
+                  onPressed: () {
+                    Routemaster.of(context).pop();
+                  }, 
+                  icon: Icon(Icons.arrow_back)
+                ),
+                expandedHeight: 150,
+                floating: true,
+                snap: true,
+                flexibleSpace: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Image.network(
+                        community.banner, 
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 20,),
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate(
+                    [
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: CircleAvatar(
+                          backgroundImage: NetworkImage(community.avatar),
+                          radius: 35,
+                        ),
+                      ),
 
-            ElevatedButton(
-              onPressed: () {}, 
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(kIsWeb ? 400:double.infinity, 50),
-                backgroundColor: Colors.blue,
-              ),
-              child: Text(
-                "Create community",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                      const SizedBox(height: 5.0,),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "r/${community.name}",
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          community.mods.contains(user!.uid) ? 
+                          OutlinedButton(
+                            onPressed: () {}, 
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 25),
+                            ),
+                            child: const Text(
+                              "Mod Tools",
+                              style: TextStyle(
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ):
+                          OutlinedButton(
+                            onPressed: () {}, 
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 25),
+                            ),
+                            child: Text(
+                              community.members.contains(user.uid) ? "Joined" : "Join",
+                              style: TextStyle(
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Padding(
+                        padding: EdgeInsets.only(top: 10.0),
+                        child: Text("${community.members.length} members"),
+                      ),
+                    ]
+                  )
                 ),
               ),
-            ),
-          ],
-        ),
+            ];
+          }, 
+          body: const Text("Displaying Posts"),
+        ), 
+        error: (error, stackTrace) => ErrorText(error: error.toString()), 
+        loading: () => const Loader(),
       ),
     );
   }
